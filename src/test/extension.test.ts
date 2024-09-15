@@ -5,6 +5,25 @@ import { SidebarProvider } from '../SidebarProvider';
 
 //import KeployHome from '../../webviews/components/KeployHome.svelte';
 
+
+const createMockExtensionContext = (): vscode.ExtensionContext => ({
+  subscriptions: [],
+  extensionPath: '/mock/path',
+  extensionUri: vscode.Uri.parse('file:///mock/path'),
+  globalState: {
+    get: sinon.stub(),
+    update: sinon.stub(),
+  },
+  workspaceState: {
+    get: sinon.stub(),
+    update: sinon.stub(),
+  },
+  asAbsolutePath: sinon.stub().returns('/mock/absolute/path'),
+  storagePath: '/mock/storage/path',
+  globalStoragePath: '/mock/global/storage/path',
+  logPath: '/mock/log/path',
+} as unknown as vscode.ExtensionContext);
+
 // Mock classes for FakeWebview and FakeWebviewView to simulate behavior
 class FakeWebview implements vscode.Webview {
   public html = '';
@@ -57,16 +76,22 @@ class FakeWebviewView implements vscode.WebviewView {
 // 	});
 
 suite('Sidebar Test Suite', () => {
+
+  let mockContext: vscode.ExtensionContext;
+  let extensionUri: vscode.Uri;
+
+  setup(() => {
+    mockContext = createMockExtensionContext();
+    extensionUri = vscode.Uri.parse('http://www.example.com/some/path');
+  });
+
   test('Sidebar Provider Registration', () => {
-    const extensionUri = vscode.Uri.parse('fake://extension');
-    const sidebarProvider = new SidebarProvider(extensionUri);
+    const sidebarProvider = new SidebarProvider(extensionUri, mockContext);
 
     const registerWebviewViewProviderSpy = sinon.spy(vscode.window, 'registerWebviewViewProvider');
 
-    // Register the sidebar provider
     vscode.window.registerWebviewViewProvider('Test-Sidebar', sidebarProvider);
 
-    // Ensure that registerWebviewViewProvider was called with the correct arguments
     assert(registerWebviewViewProviderSpy.calledOnce);
     assert(
       registerWebviewViewProviderSpy.calledWith(
@@ -75,20 +100,17 @@ suite('Sidebar Test Suite', () => {
       )
     );
 
-    // Clean up
     registerWebviewViewProviderSpy.restore();
   });
+  
 
   test('Sidebar Content Rendering', async () => {
-    const extensionUri = vscode.Uri.parse('http://www.example.com/some/path');
-    const sidebarProvider = new SidebarProvider(extensionUri);
+    const sidebarProvider = new SidebarProvider(extensionUri, mockContext);
     const webview = new FakeWebview() as vscode.Webview;
     const view = new FakeWebviewView(webview) as vscode.WebviewView;
 
-    // Simulate the creation of the webview panel
-    sidebarProvider.resolveWebviewView(view);
+    await sidebarProvider.resolveWebviewView(view);
 
-    // Ensure that the webview content is set correctly
     assert.strictEqual(
       webview.html.includes('<link href="http://www.example.com/some/path/media/vscode.css" rel="stylesheet">'),
       true
@@ -98,12 +120,11 @@ suite('Sidebar Test Suite', () => {
   });
 
   test('Sidebar Comprehensive Functionality', async () => {
-    const extensionUri = vscode.Uri.parse('http://www.example.com/some/path');
-    const sidebarProvider = new SidebarProvider(extensionUri);
+    const sidebarProvider = new SidebarProvider(extensionUri, mockContext);
     const webview = new FakeWebview() as vscode.Webview;
     const view = new FakeWebviewView(webview) as unknown as vscode.WebviewView;
 
-	await sidebarProvider.resolveWebviewView(view);
+    await sidebarProvider.resolveWebviewView(view);
 
     // Simulate the creation of the webview panel
     assert.strictEqual(webview.html.includes('<!DOCTYPE html>'), true, 'DOCTYPE is missing');
