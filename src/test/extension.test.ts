@@ -1,4 +1,5 @@
 import assert = require('assert');
+import assert = require('assert');
 import * as vscode from 'vscode';
 import sinon from 'sinon';
 import { SidebarProvider } from '../SidebarProvider';
